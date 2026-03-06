@@ -139,6 +139,28 @@ html, body {
   display: block;
 }
 
+#closet-cam-debug {
+  position: fixed;
+  left: 14px;
+  top: 14px;
+  min-width: 240px;
+  padding: 10px 12px;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 18px rgba(111, 84, 97, 0.14);
+  color: #3f2d35;
+  font: 600 11px/1.35 "Trebuchet MS", "Segoe UI", sans-serif;
+  letter-spacing: 0.01em;
+  display: none;
+  z-index: 22;
+  white-space: pre-line;
+}
+
+#closet-cam-debug.open {
+  display: block;
+}
+
 #test-menu-title {
   color: #6f5461;
   font: 700 12px/1.2 "Trebuchet MS", "Segoe UI", sans-serif;

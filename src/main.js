@@ -11,6 +11,7 @@ const roomBanner = document.getElementById("room-banner");
 const tooltip = document.getElementById("tooltip");
 const testMenuButton = document.getElementById("test-menu-button");
 const testMenu = document.getElementById("test-menu");
+const closetCamDebugPanel = document.getElementById("closet-cam-debug");
 
 const loadingStartedAt = performance.now();
 const minLoadingMs = 1200;
@@ -168,8 +169,112 @@ const cameraProfiles = {
   }
 };
 
+const closetCamBase = {
+  positionX: cameraProfiles.brown.position.x,
+  targetX: cameraProfiles.brown.target.x
+};
+
+const closetCamDebug = {
+  enabled: false,
+  lastText: ""
+};
+
 let activeCameraProfile = cameraProfiles.pink;
 let cameraTween = null;
+
+function setClosetCamDebugEnabled(enabled) {
+  closetCamDebug.enabled = Boolean(enabled);
+  updateClosetCamDebugPanel(true);
+}
+
+function updateClosetCamDebugPanel(force = false) {
+  if (!closetCamDebugPanel) return;
+
+  const isVisible = closetCamDebug.enabled && activeRoomKey === "brown";
+  closetCamDebugPanel.classList.toggle("open", isVisible);
+  closetCamDebugPanel.setAttribute("aria-hidden", String(!isVisible));
+  if (!isVisible) {
+    closetCamDebug.lastText = "";
+    return;
+  }
+
+  const profilePosX = cameraProfiles.brown.position.x;
+  const profileTargetX = cameraProfiles.brown.target.x;
+  const livePosX = camera.position.x;
+  const liveTargetX = controls.target.x;
+  const lines = [
+    "Closet Cam Debug",
+    `Offset X from base: ${(profilePosX - closetCamBase.positionX).toFixed(3)}`,
+    `Profile X: cam ${profilePosX.toFixed(3)} | target ${profileTargetX.toFixed(3)}`,
+    `Live X: cam ${livePosX.toFixed(3)} | target ${liveTargetX.toFixed(3)}`,
+    "Keys: C toggle | Left/Right move | Shift fine | 0 reset"
+  ];
+  const nextText = lines.join("\n");
+  if (force || closetCamDebug.lastText !== nextText) {
+    closetCamDebugPanel.textContent = nextText;
+    closetCamDebug.lastText = nextText;
+  }
+}
+
+function adjustClosetCameraX(delta) {
+  const profile = cameraProfiles.brown;
+  profile.position.x += delta;
+  profile.target.x = THREE.MathUtils.clamp(
+    profile.target.x + delta,
+    profile.clampTarget.xMin,
+    profile.clampTarget.xMax
+  );
+
+  if (activeRoomKey === "brown") {
+    camera.position.x = profile.position.x;
+    controls.target.x = profile.target.x;
+    controls.update();
+  }
+
+  updateClosetCamDebugPanel(true);
+}
+
+function resetClosetCameraX() {
+  const profile = cameraProfiles.brown;
+  profile.position.x = closetCamBase.positionX;
+  profile.target.x = closetCamBase.targetX;
+
+  if (activeRoomKey === "brown") {
+    camera.position.x = profile.position.x;
+    controls.target.x = profile.target.x;
+    controls.update();
+  }
+
+  updateClosetCamDebugPanel(true);
+}
+
+function onDebugHotkey(event) {
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+  ) {
+    return;
+  }
+
+  if (event.key.toLowerCase() === "c") {
+    setClosetCamDebugEnabled(!closetCamDebug.enabled);
+    return;
+  }
+
+  if (!closetCamDebug.enabled || activeRoomKey !== "brown") return;
+
+  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    event.preventDefault();
+    const step = event.shiftKey ? 0.02 : 0.08;
+    adjustClosetCameraX(event.key === "ArrowRight" ? step : -step);
+    return;
+  }
+
+  if (event.key === "0") {
+    resetClosetCameraX();
+  }
+}
 
 function createHeartShape() {
   const s = new THREE.Shape();
@@ -425,6 +530,8 @@ function setRoom(key, { immediateCamera = false } = {}) {
       oyachi.nextActionAt = performance.now() + 600;
     }
   }
+
+  updateClosetCamDebugPanel(true);
 }
 
 function transitionToRoom(key) {
@@ -787,6 +894,9 @@ if (testMenuButton && testMenu) {
 
   menuItems.forEach((item) => {
     item.addEventListener("click", () => {
+      if (item.id === "closet-cam-debug-toggle") {
+        setClosetCamDebugEnabled(!closetCamDebug.enabled);
+      }
       if (item.textContent?.toLowerCase().includes("spawn")) {
         if (oyachi.sprite) {
           spawnHearts(oyachi.sprite.position);
@@ -799,6 +909,7 @@ if (testMenuButton && testMenu) {
   });
 
   window.addEventListener("keydown", (event) => {
+    onDebugHotkey(event);
     if (event.key === "Escape") {
       setTestMenuOpen(false);
     }
@@ -861,6 +972,7 @@ function animate() {
   updateOyachi(delta);
   updateHearts(delta);
   updateFloorPulses(delta);
+  updateClosetCamDebugPanel();
   renderer.render(scene, camera);
 }
 
