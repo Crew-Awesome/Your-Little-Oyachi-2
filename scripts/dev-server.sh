@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PORT="${PORT:-8080}"
-URL="http://127.0.0.1:${PORT}/index.html"
+URL="http://127.0.0.1:${PORT}/app/index.html"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"

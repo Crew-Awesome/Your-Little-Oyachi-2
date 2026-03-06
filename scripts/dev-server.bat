@@ -14,8 +14,8 @@ if %errorlevel%==0 (
   set "PY=python"
 )
 
-echo Starting local server at http://localhost:%PORT%/index.html
-start "" http://localhost:%PORT%/index.html
+echo Starting local server at http://localhost:%PORT%/app/index.html
+start "" http://localhost:%PORT%/app/index.html
 
 %PY% -m http.server %PORT%
 

@@ -8,6 +8,15 @@ This game is **still in development**.
 
 It is currently developed by **ImMalloy** only, for now. Contributions are welcome.
 
+## Repository Structure
+
+- `app/index.html` - app entrypoint
+- `app/src/main.js` - Three.js scene/game logic
+- `app/styles/main.css` - app styles
+- `assets/` - sprites and audio assets
+- `scripts/` - local development server scripts
+- `index.html` - root redirect to `app/index.html`
+
 ## Current Features
 
 - Pink room and closet room with door transitions
@@ -24,7 +33,7 @@ Use any of these scripts:
 - macOS double-click helper: `scripts/dev-server.command`
 - Windows: `scripts/dev-server.bat`
 
-Default server URL is `http://127.0.0.1:8080/index.html`.
+Default server URL is `http://127.0.0.1:8080/app/index.html`.
 
 You can override the port with `PORT`, for example:
 
