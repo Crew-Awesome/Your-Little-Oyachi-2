@@ -145,7 +145,7 @@ const cameraProfiles = {
     minCameraZ: 6.8
   },
   brown: {
-    position: new THREE.Vector3(-0.06, 1.82, 3.08),
+    position: new THREE.Vector3(0.42, 1.82, 3.08),
     target: new THREE.Vector3(-1.14, 1.34, 0.35),
     minDistance: 2.85,
     maxDistance: 6.4,
