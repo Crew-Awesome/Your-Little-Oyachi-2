@@ -399,8 +399,12 @@ function createPinkFurniture(kind) {
     group.add(createFurniturePart(2.04, 0.14, 1.08, c.base, 0, 0.3, 0));
     group.add(createFurniturePart(1.98, 0.18, 1.02, c.light, 0, 0.46, 0));
     group.add(createFurniturePart(0.22, 0.94, 1.2, c.dark, -0.97, 0.47, 0));
-    group.add(createFurniturePart(0.7, 0.12, 0.3, 0xffffff, -0.53, 0.57, -0.26));
-    group.add(createFurniturePart(0.7, 0.12, 0.3, 0xffffff, -0.53, 0.57, 0.24));
+    const pillowA = createFurniturePart(0.7, 0.12, 0.3, 0xffffff, -0.53, 0.57, -0.26);
+    pillowA.scale.set(0.7, 0.95, 1.52);
+    const pillowB = createFurniturePart(0.7, 0.12, 0.3, 0xffffff, -0.53, 0.57, 0.24);
+    pillowB.scale.set(0.7, 0.95, 1.52);
+    group.add(pillowA);
+    group.add(pillowB);
   } else if (kind === "table") {
     group.add(createFurniturePart(1.12, 0.12, 0.68, c.base, 0, 0.62, 0));
     group.add(createFurniturePart(0.12, 0.58, 0.12, c.dark, 0.45, 0.29, 0.24));
