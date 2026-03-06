@@ -9,9 +9,6 @@ const loadingScreen = document.getElementById("loading-screen");
 const transitionScreen = document.getElementById("transition-screen");
 const roomBanner = document.getElementById("room-banner");
 const tooltip = document.getElementById("tooltip");
-const testMenuButton = document.getElementById("test-menu-button");
-const testMenu = document.getElementById("test-menu");
-const closetCamDebugPanel = document.getElementById("closet-cam-debug");
 
 const loadingStartedAt = performance.now();
 const minLoadingMs = 1200;
@@ -171,99 +168,8 @@ const cameraProfiles = {
   }
 };
 
-const closetCamBase = {
-  positionX: 0.42,
-  targetX: -1.14
-};
-
-const closetCamDebug = {
-  enabled: false,
-  lastText: ""
-};
-
 let activeCameraProfile = cameraProfiles.pink;
 let cameraTween = null;
-
-function setClosetCamDebugEnabled(enabled) {
-  closetCamDebug.enabled = Boolean(enabled);
-  updateClosetCamDebugPanel(true);
-}
-
-function updateClosetCamDebugPanel(force = false) {
-  if (!closetCamDebugPanel) return;
-
-  const isVisible = closetCamDebug.enabled && activeRoomKey === "brown";
-  closetCamDebugPanel.classList.toggle("open", isVisible);
-  closetCamDebugPanel.setAttribute("aria-hidden", String(!isVisible));
-  if (!isVisible) {
-    closetCamDebug.lastText = "";
-    return;
-  }
-
-  const profilePosX = cameraProfiles.brown.position.x;
-  const profileTargetX = cameraProfiles.brown.target.x;
-  const livePosX = camera.position.x;
-  const liveTargetX = controls.target.x;
-  const lines = [
-    "Closet Cam Debug",
-    `Offset X from base: ${(profilePosX - closetCamBase.positionX).toFixed(3)}`,
-    `Profile X: cam ${profilePosX.toFixed(3)} | target ${profileTargetX.toFixed(3)}`,
-    `Live X: cam ${livePosX.toFixed(3)} | target ${liveTargetX.toFixed(3)}`,
-    "Keys: C toggle | Left/Right move | Shift fine | 0 reset"
-  ];
-  const nextText = lines.join("\n");
-  if (force || closetCamDebug.lastText !== nextText) {
-    closetCamDebugPanel.textContent = nextText;
-    closetCamDebug.lastText = nextText;
-  }
-}
-
-function adjustClosetCameraX(delta) {
-  const profile = cameraProfiles.brown;
-  profile.position.x += delta;
-  profile.target.x += delta;
-
-  if (activeRoomKey === "brown") {
-    camera.position.x += delta;
-    controls.target.x += delta;
-    controls.update();
-  }
-
-  updateClosetCamDebugPanel(true);
-}
-
-function resetClosetCameraX() {
-  const delta = closetCamBase.positionX - cameraProfiles.brown.position.x;
-  adjustClosetCameraX(delta);
-}
-
-function onDebugHotkey(event) {
-  const target = event.target;
-  if (
-    target instanceof HTMLElement &&
-    (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
-  ) {
-    return;
-  }
-
-  if (event.key.toLowerCase() === "c") {
-    setClosetCamDebugEnabled(!closetCamDebug.enabled);
-    return;
-  }
-
-  if (!closetCamDebug.enabled || activeRoomKey !== "brown") return;
-
-  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-    event.preventDefault();
-    const step = event.shiftKey ? 0.02 : 0.08;
-    adjustClosetCameraX(event.key === "ArrowRight" ? step : -step);
-    return;
-  }
-
-  if (event.key === "0") {
-    resetClosetCameraX();
-  }
-}
 
 function createHeartShape() {
   const s = new THREE.Shape();
@@ -510,17 +416,18 @@ function setRoom(key, { immediateCamera = false } = {}) {
     if (key === "brown") {
       oyachi.sprite.position.x = -0.95;
       oyachi.sprite.position.z = 0.35;
+      oyachi.sprite.material.color.setHex(0xf7efe8);
       oyachi.targetX = -0.95;
       oyachi.targetZ = 0.35;
       oyachi.phase = "idle";
       oyachi.velocity.set(0, 0);
       oyachi.nextActionAt = performance.now() + 1200;
     } else {
+      oyachi.sprite.material.color.setHex(0xffffff);
       oyachi.nextActionAt = performance.now() + 600;
     }
   }
 
-  updateClosetCamDebugPanel(true);
 }
 
 function transitionToRoom(key) {
@@ -753,13 +660,19 @@ function updateOyachi(delta) {
   const walkPulse = oyachi.moving
     ? Math.max(0, Math.sin(now * 0.01)) * 0.055
     : 0;
-  oyachi.sprite.position.y = oyachi.baseHeight + walkPulse;
+  const idleBreath = oyachi.moving ? 0 : Math.sin(now * 0.0037) * 0.012;
+  oyachi.sprite.position.y = oyachi.baseHeight + walkPulse + idleBreath;
 
   if (oyachi.shadow && oyachi.shadowMaterial) {
-    const stretch = walkPulse * 3.2;
+    const speedT = THREE.MathUtils.clamp(oyachi.velocity.length() / oyachi.walkSpeed, 0, 1);
+    const stretch = walkPulse * 3.2 + speedT * 0.12;
     oyachi.shadow.position.set(oyachi.sprite.position.x, 0.014, oyachi.sprite.position.z + 0.02);
-    oyachi.shadow.scale.set(1 + stretch, 0.82 + stretch * 0.75, 1);
-    oyachi.shadowMaterial.uniforms.uAlpha.value = 0.31 - walkPulse * 1.9;
+    oyachi.shadow.scale.set(1.04 + stretch, 0.8 + stretch * 0.62, 1);
+    oyachi.shadowMaterial.uniforms.uAlpha.value = THREE.MathUtils.clamp(
+      0.35 - walkPulse * 1.45 + speedT * 0.03,
+      0.22,
+      0.4
+    );
   }
 
   oyachi.squash += (0 - oyachi.squash) * 0.08;
@@ -767,12 +680,14 @@ function updateOyachi(delta) {
 
   const baseScale = 1.02;
   oyachi.scaleY += ((oyachi.moving ? 0.985 : 1) - oyachi.scaleY) * 0.12;
+  const breathScaleY = 1 + idleBreath * 2.8;
+  const breathScaleX = 1 - idleBreath * 1.25;
 
   const squishX = 1 + oyachi.squash + oyachi.stretch * 0.5;
   const squishY = 1 - oyachi.squash + oyachi.stretch;
   oyachi.sprite.scale.set(
-    baseScale * squishX,
-    baseScale * oyachi.textures.aspect * oyachi.scaleY * squishY,
+    baseScale * squishX * breathScaleX,
+    baseScale * oyachi.textures.aspect * oyachi.scaleY * squishY * breathScaleY,
     1
   );
   oyachi.sprite.lookAt(camera.position);
@@ -802,7 +717,7 @@ async function loadOyachi() {
 
   const shadowMaterial = new THREE.ShaderMaterial({
     uniforms: {
-      uAlpha: { value: 0.31 }
+      uAlpha: { value: 0.35 }
     },
     vertexShader: `
       varying vec2 vUv;
@@ -816,9 +731,11 @@ async function loadOyachi() {
       uniform float uAlpha;
       void main() {
         float d = distance(vUv, vec2(0.5, 0.5));
-        float fill = 1.0 - step(0.47, d);
-        vec3 ink = vec3(0.22, 0.17, 0.2);
-        gl_FragColor = vec4(ink, fill * uAlpha);
+        float core = 1.0 - step(0.32, d);
+        float body = (1.0 - step(0.47, d)) - core;
+        float alpha = (core * 1.05 + body * 0.72) * uAlpha;
+        vec3 color = core > 0.5 ? vec3(0.17, 0.12, 0.16) : vec3(0.24, 0.18, 0.22);
+        gl_FragColor = vec4(color, alpha);
       }
     `,
     transparent: true,
@@ -826,7 +743,7 @@ async function loadOyachi() {
     side: THREE.DoubleSide
   });
 
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.6, 48), shadowMaterial);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 32), shadowMaterial);
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.set(sprite.position.x, 0.014, sprite.position.z + 0.02);
   shadow.scale.set(1, 0.82, 1);
@@ -914,50 +831,6 @@ function onPointerDown(event) {
   }
 }
 
-function setTestMenuOpen(open) {
-  const isOpen = Boolean(open);
-  testMenu.classList.toggle("open", isOpen);
-  testMenu.setAttribute("aria-hidden", String(!isOpen));
-}
-
-if (testMenuButton && testMenu) {
-  const menuItems = Array.from(testMenu.querySelectorAll(".test-menu-item"));
-
-  testMenuButton.addEventListener("click", () => {
-    setTestMenuOpen(!testMenu.classList.contains("open"));
-  });
-
-  menuItems.forEach((item) => {
-    item.addEventListener("click", () => {
-      if (item.id === "closet-cam-debug-toggle") {
-        setClosetCamDebugEnabled(!closetCamDebug.enabled);
-      }
-      if (item.textContent?.toLowerCase().includes("spawn")) {
-        if (oyachi.sprite) {
-          spawnHearts(oyachi.sprite.position);
-        }
-      }
-      if (item.textContent?.toLowerCase().includes("close")) {
-        setTestMenuOpen(false);
-      }
-    });
-  });
-
-  window.addEventListener("keydown", (event) => {
-    onDebugHotkey(event);
-    if (event.key === "Escape") {
-      setTestMenuOpen(false);
-    }
-  });
-
-  window.addEventListener("pointerdown", (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    if (target.closest("#test-menu") || target.closest("#test-menu-button")) return;
-    setTestMenuOpen(false);
-  });
-}
-
 renderer.domElement.addEventListener("pointermove", onPointerMove);
 renderer.domElement.addEventListener("pointerleave", onPointerLeave);
 renderer.domElement.addEventListener("pointerdown", onPointerDown);
@@ -1007,7 +880,6 @@ function animate() {
   updateOyachi(delta);
   updateHearts(delta);
   updateFloorPulses(delta);
-  updateClosetCamDebugPanel();
   renderer.render(scene, camera);
 }
 
