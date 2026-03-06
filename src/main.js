@@ -159,7 +159,7 @@ const cameraProfiles = {
     enableZoom: true,
     clampTarget: {
       xMin: -2.4,
-      xMax: -0.25,
+      xMax: 1.2,
       yMin: 1.35,
       yMax: 2.05,
       zMin: -0.55,
@@ -219,15 +219,11 @@ function updateClosetCamDebugPanel(force = false) {
 function adjustClosetCameraX(delta) {
   const profile = cameraProfiles.brown;
   profile.position.x += delta;
-  profile.target.x = THREE.MathUtils.clamp(
-    profile.target.x + delta,
-    profile.clampTarget.xMin,
-    profile.clampTarget.xMax
-  );
+  profile.target.x += delta;
 
   if (activeRoomKey === "brown") {
-    camera.position.x = profile.position.x;
-    controls.target.x = profile.target.x;
+    camera.position.x += delta;
+    controls.target.x += delta;
     controls.update();
   }
 
@@ -235,17 +231,8 @@ function adjustClosetCameraX(delta) {
 }
 
 function resetClosetCameraX() {
-  const profile = cameraProfiles.brown;
-  profile.position.x = closetCamBase.positionX;
-  profile.target.x = closetCamBase.targetX;
-
-  if (activeRoomKey === "brown") {
-    camera.position.x = profile.position.x;
-    controls.target.x = profile.target.x;
-    controls.update();
-  }
-
-  updateClosetCamDebugPanel(true);
+  const delta = closetCamBase.positionX - cameraProfiles.brown.position.x;
+  adjustClosetCameraX(delta);
 }
 
 function onDebugHotkey(event) {
