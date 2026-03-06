@@ -607,9 +607,13 @@ function spawnFloorPulsePair(point) {
 }
 
 function spawnHearts(origin) {
+  const bodyBaseY = oyachi.sprite
+    ? oyachi.sprite.position.y + oyachi.sprite.scale.y * 0.28
+    : origin.y + 0.45;
   const topY = oyachi.sprite
     ? oyachi.sprite.position.y + oyachi.sprite.scale.y * 0.92
     : origin.y + 1.2;
+  const bodySpanY = Math.max(0.15, topY - bodyBaseY);
 
   for (let i = 0; i < 4; i += 1) {
     const mat = new THREE.MeshBasicMaterial({
@@ -623,7 +627,7 @@ function spawnHearts(origin) {
     const radius = 0.26 + Math.random() * 0.16;
     mesh.position.copy(origin);
     mesh.position.x += Math.cos(angle) * radius;
-    mesh.position.y = topY + Math.random() * 0.18;
+    mesh.position.y = bodyBaseY + Math.random() * bodySpanY;
     mesh.position.z += Math.sin(angle) * radius * 0.85;
     mesh.scale.set(0.03, 0.2, 0.03);
     mesh.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.35);
