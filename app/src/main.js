@@ -108,6 +108,7 @@ const oyachi = {
   shadow: null,
   shadowMaterial: null,
   textures: null,
+  facing: 1,
   baseHeight: 0.08,
   squash: 0,
   stretch: 0,
@@ -742,7 +743,9 @@ function updateOyachi(delta) {
 
     oyachi.sprite.position.x += oyachi.velocity.x * delta;
     oyachi.sprite.position.z += oyachi.velocity.y * delta;
-    oyachi.sprite.center.x = oyachi.velocity.x < 0 ? 0.42 : 0.58;
+    if (Math.abs(oyachi.velocity.x) > 0.015) {
+      oyachi.facing = oyachi.velocity.x < 0 ? -1 : 1;
+    }
 
     if (now >= oyachi.nextStepAt && oyachi.velocity.lengthSq() > 0.08) {
       playSfx(walkSfxPaths, 0.15);
@@ -789,7 +792,7 @@ function updateOyachi(delta) {
   const squishX = 1 + oyachi.squash + oyachi.stretch * 0.5;
   const squishY = 1 - oyachi.squash + oyachi.stretch;
   oyachi.sprite.scale.set(
-    baseScale * squishX * breathScaleX,
+    baseScale * squishX * breathScaleX * oyachi.facing,
     baseScale * oyachi.textures.aspect * oyachi.scaleY * squishY * breathScaleY,
     1
   );
