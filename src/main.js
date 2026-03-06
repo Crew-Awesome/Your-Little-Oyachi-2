@@ -66,6 +66,8 @@ const outlineMaterials = [];
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const zeroVelocity = new THREE.Vector2(0, 0);
+const pinkFloorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const pinkFloorPlaneHit = new THREE.Vector3();
 
 const heartGeometry = new THREE.ExtrudeGeometry(createHeartShape(), {
   depth: 0.18,
@@ -373,6 +375,76 @@ function createRoom({ wallColor, floorColor, withCarpet, doorSide, doorLabel }) 
   };
 }
 
+function createFurniturePart(width, height, depth, color, x, y, z) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, depth),
+    new THREE.MeshBasicMaterial({ color })
+  );
+  mesh.position.set(x, y, z);
+  return mesh;
+}
+
+function createPinkFurniture(kind) {
+  const group = new THREE.Group();
+  const c = {
+    base: 0xe9a3c5,
+    dark: 0xd884aa,
+    light: 0xf7cde0,
+    accent: 0xf3b7d2,
+    leaf: 0xe6a8c4
+  };
+
+  if (kind === "bed") {
+    group.add(createFurniturePart(2.16, 0.24, 1.2, c.dark, 0, 0.12, 0));
+    group.add(createFurniturePart(2.04, 0.14, 1.08, c.base, 0, 0.3, 0));
+    group.add(createFurniturePart(1.98, 0.18, 1.02, c.light, 0, 0.46, 0));
+    group.add(createFurniturePart(0.22, 0.94, 1.2, c.dark, -0.97, 0.47, 0));
+    group.add(createFurniturePart(0.7, 0.12, 0.3, 0xffffff, -0.53, 0.57, -0.26));
+    group.add(createFurniturePart(0.7, 0.12, 0.3, 0xffffff, -0.53, 0.57, 0.24));
+  } else if (kind === "table") {
+    group.add(createFurniturePart(1.12, 0.12, 0.68, c.base, 0, 0.62, 0));
+    group.add(createFurniturePart(0.12, 0.58, 0.12, c.dark, 0.45, 0.29, 0.24));
+    group.add(createFurniturePart(0.12, 0.58, 0.12, c.dark, -0.45, 0.29, 0.24));
+    group.add(createFurniturePart(0.12, 0.58, 0.12, c.dark, 0.45, 0.29, -0.24));
+    group.add(createFurniturePart(0.12, 0.58, 0.12, c.dark, -0.45, 0.29, -0.24));
+  } else if (kind === "dresser") {
+    group.add(createFurniturePart(1.08, 1.02, 0.56, c.base, 0, 0.51, 0));
+    group.add(createFurniturePart(0.95, 0.24, 0.6, c.light, 0, 0.23, 0.03));
+    group.add(createFurniturePart(0.95, 0.24, 0.6, c.light, 0, 0.51, 0.03));
+    group.add(createFurniturePart(0.95, 0.24, 0.6, c.light, 0, 0.79, 0.03));
+    group.add(createFurniturePart(1.14, 0.08, 0.6, c.dark, 0, 1.02, 0));
+  } else if (kind === "plant") {
+    group.add(createFurniturePart(0.44, 0.34, 0.44, c.accent, 0, 0.17, 0));
+    const leaf = new THREE.Mesh(
+      new THREE.ConeGeometry(0.28, 0.66, 7),
+      new THREE.MeshBasicMaterial({ color: c.leaf })
+    );
+    leaf.position.set(0, 0.66, 0);
+    group.add(leaf);
+  } else {
+    group.add(createFurniturePart(0.5, 0.14, 0.5, c.base, 0, 0.46, 0));
+    group.add(createFurniturePart(0.18, 0.46, 0.18, c.dark, 0, 0.23, 0));
+  }
+
+  group.userData.kind = kind;
+  group.userData.type = "pink-furniture";
+  return group;
+}
+
+function addPinkFurniturePlacement(kind, x, z, rotationY, scale) {
+  const object = createPinkFurniture(kind);
+  object.position.set(x, 0, z);
+  object.rotation.y = rotationY;
+  object.scale.setScalar(scale);
+  pinkRoom.room.add(object);
+}
+
+function seedPinkRoomFurniture() {
+  addPinkFurniturePlacement("bed", -2.795, -1.929, 5.6025, 1.02);
+  addPinkFurniturePlacement("dresser", 2.405, -1.613, 5.4454, 1.48);
+  addPinkFurniturePlacement("table", 3.293, 2.552, 0.6807, 1.45);
+}
+
 function addClosetBoxes(room) {
   const boxColors = [0xb78f66, 0xa9805c, 0xc49b74, 0x9f7755];
   const boxSpecs = [
@@ -410,6 +482,7 @@ const brownRoom = createRoom({
 });
 
 addClosetBoxes(brownRoom.room);
+seedPinkRoomFurniture();
 
 brownRoom.room.visible = false;
 scene.add(pinkRoom.room);
@@ -767,6 +840,7 @@ async function loadOyachi() {
 
 function onPointerMove(event) {
   if (isTransitioning) return;
+
   updatePointer(event);
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(activeRoom.doors, false);
@@ -815,8 +889,14 @@ function onPointerDown(event) {
   }
 
   const floorHits = raycaster.intersectObjects(activeRoom.floors, false);
-  if (floorHits.length && activeRoomKey === "pink") {
-    const hitPoint = floorHits[0].point;
+  let hitPoint = null;
+  if (floorHits.length) {
+    hitPoint = floorHits[0].point;
+  } else if (activeRoomKey === "pink" && raycaster.ray.intersectPlane(pinkFloorPlane, pinkFloorPlaneHit)) {
+    hitPoint = pinkFloorPlaneHit;
+  }
+
+  if (hitPoint && activeRoomKey === "pink") {
     const now = performance.now();
     const tapDelay = now - floorTapState.lastAt;
     const tapDistance = floorTapState.point.distanceTo(hitPoint);
