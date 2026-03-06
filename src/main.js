@@ -373,6 +373,26 @@ function createRoom({ wallColor, floorColor, withCarpet, doorSide, doorLabel }) 
   };
 }
 
+function addClosetBoxes(room) {
+  const boxColors = [0xb78f66, 0xa9805c, 0xc49b74, 0x9f7755];
+  const boxSpecs = [
+    { size: [0.95, 0.58, 0.72], pos: [-2.65, -2.75], rot: 0.02 },
+    { size: [0.82, 0.46, 0.66], pos: [-1.78, -2.62], rot: -0.08 },
+    { size: [0.72, 0.4, 0.56], pos: [2.58, -2.18], rot: -0.04 },
+    { size: [0.9, 0.54, 0.68], pos: [2.24, -1.42], rot: 0.06 },
+    { size: [0.68, 0.36, 0.58], pos: [-2.82, -1.2], rot: 0.12 }
+  ];
+
+  boxSpecs.forEach((spec, index) => {
+    const material = new THREE.MeshBasicMaterial({ color: boxColors[index % boxColors.length] });
+    const geometry = new THREE.BoxGeometry(spec.size[0], spec.size[1], spec.size[2]);
+    const box = new THREE.Mesh(geometry, material);
+    box.position.set(spec.pos[0], spec.size[1] * 0.5 + 0.002, spec.pos[1]);
+    box.rotation.y = spec.rot;
+    room.add(box);
+  });
+}
+
 const pinkRoom = createRoom({
   wallColor: 0xf4e1ea,
   floorColor: 0xfac7dd,
@@ -388,6 +408,8 @@ const brownRoom = createRoom({
   doorSide: "left",
   doorLabel: "Oyachi's Room"
 });
+
+addClosetBoxes(brownRoom.room);
 
 brownRoom.room.visible = false;
 scene.add(pinkRoom.room);
@@ -668,7 +690,7 @@ function updateOyachi(delta) {
     const stretch = walkPulse * 3.2 + speedT * 0.12;
     oyachi.shadow.position.set(oyachi.sprite.position.x, 0.014, oyachi.sprite.position.z + 0.02);
     oyachi.shadow.scale.set(1.04 + stretch, 0.8 + stretch * 0.62, 1);
-    oyachi.shadowMaterial.uniforms.uAlpha.value = THREE.MathUtils.clamp(
+    oyachi.shadowMaterial.opacity = THREE.MathUtils.clamp(
       0.35 - walkPulse * 1.45 + speedT * 0.03,
       0.22,
       0.4
@@ -715,30 +737,10 @@ async function loadOyachi() {
   sprite.scale.set(1.05, 1.05 * aspect, 1);
   sprite.userData.type = "oyachi";
 
-  const shadowMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      uAlpha: { value: 0.35 }
-    },
-    vertexShader: `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      varying vec2 vUv;
-      uniform float uAlpha;
-      void main() {
-        float d = distance(vUv, vec2(0.5, 0.5));
-        float core = 1.0 - step(0.32, d);
-        float body = (1.0 - step(0.47, d)) - core;
-        float alpha = (core * 1.05 + body * 0.72) * uAlpha;
-        vec3 color = core > 0.5 ? vec3(0.17, 0.12, 0.16) : vec3(0.24, 0.18, 0.22);
-        gl_FragColor = vec4(color, alpha);
-      }
-    `,
+  const shadowMaterial = new THREE.MeshBasicMaterial({
+    color: 0x382932,
     transparent: true,
+    opacity: 0.35,
     depthWrite: false,
     side: THREE.DoubleSide
   });
