@@ -4,6 +4,9 @@ set -euo pipefail
 PORT="${PORT:-8080}"
 URL="http://127.0.0.1:${PORT}/index.html"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 if ! command -v python3 >/dev/null 2>&1; then
   echo "python3 is required but not found."
   exit 1
@@ -19,4 +22,6 @@ fi
 
 echo "Serving at ${URL}"
 echo "Press Ctrl+C to stop."
+
+cd "${REPO_ROOT}"
 exec python3 -m http.server "${PORT}"
