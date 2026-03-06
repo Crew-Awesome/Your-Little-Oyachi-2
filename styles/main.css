@@ -1,0 +1,169 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #fffafc;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #fffafc;
+  color: #8f6f7c;
+  font: 600 14px/1.2 "Trebuchet MS", "Segoe UI", sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: opacity 260ms ease;
+  z-index: 10;
+}
+
+#loading-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#transition-screen {
+  position: fixed;
+  inset: 0;
+  background: #fffafc;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+  z-index: 9;
+}
+
+#transition-screen.active {
+  opacity: 1;
+}
+
+#room-banner {
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #3f2d35;
+  border: 1px solid #ffffff;
+  border-radius: 6px;
+  font: 700 13px/1.1 "Trebuchet MS", "Segoe UI", sans-serif;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 12;
+  white-space: nowrap;
+}
+
+#room-banner.show {
+  animation: roomBannerPopFade 2.2s ease forwards;
+}
+
+@keyframes roomBannerPopFade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.95);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  75% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -6px) scale(0.98);
+  }
+}
+
+#tooltip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform: translate(12px, 12px);
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #3f2d35;
+  border: 1px solid #ffffff;
+  border-radius: 4px;
+  font: 600 12px/1.2 "Trebuchet MS", "Segoe UI", sans-serif;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  z-index: 11;
+  white-space: nowrap;
+}
+
+#tooltip.visible {
+  opacity: 1;
+}
+
+#test-menu-button {
+  position: fixed;
+  right: 14px;
+  top: 14px;
+  border: 1px solid #ffffff;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #3f2d35;
+  font: 700 12px/1.1 "Trebuchet MS", "Segoe UI", sans-serif;
+  padding: 8px 11px;
+  cursor: pointer;
+  z-index: 20;
+}
+
+#test-menu {
+  position: fixed;
+  right: 14px;
+  top: 52px;
+  min-width: 180px;
+  padding: 10px;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 18px rgba(111, 84, 97, 0.14);
+  display: none;
+  z-index: 21;
+}
+
+#test-menu.open {
+  display: block;
+}
+
+#test-menu-title {
+  color: #6f5461;
+  font: 700 12px/1.2 "Trebuchet MS", "Segoe UI", sans-serif;
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.test-menu-item {
+  width: 100%;
+  border: 1px solid #eadde4;
+  border-radius: 7px;
+  background: #fff;
+  color: #3f2d35;
+  font: 600 12px/1.1 "Trebuchet MS", "Segoe UI", sans-serif;
+  padding: 8px;
+  margin: 0 0 6px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.test-menu-item:last-child {
+  margin-bottom: 0;
+}
+
+canvas {
+  display: block;
+}

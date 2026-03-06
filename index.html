@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oyachi Game 2</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+  <div id="loading-screen">Loading room...</div>
+  <div id="transition-screen"></div>
+  <div id="room-banner"></div>
+  <div id="tooltip"></div>
+  <button id="test-menu-button" type="button">Menu</button>
+  <div id="test-menu" aria-hidden="true">
+    <div id="test-menu-title">Test Menu</div>
+    <button class="test-menu-item" type="button">Toggle Debug View</button>
+    <button class="test-menu-item" type="button">Spawn Hearts</button>
+    <button class="test-menu-item" type="button">Close</button>
+  </div>
+  <div id="app"></div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
