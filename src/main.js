@@ -106,6 +106,8 @@ const roomNames = {
 
 const oyachi = {
   sprite: null,
+  shadow: null,
+  shadowMaterial: null,
   textures: null,
   baseHeight: 0.08,
   squash: 0,
@@ -146,8 +148,8 @@ const cameraProfiles = {
     minCameraZ: 6.8
   },
   brown: {
-    position: new THREE.Vector3(0.42, 1.82, 3.08),
-    target: new THREE.Vector3(-1.14, 1.34, 0.35),
+    position: new THREE.Vector3(1.78, 1.82, 3.08),
+    target: new THREE.Vector3(0.22, 1.34, 0.35),
     minDistance: 2.85,
     maxDistance: 6.4,
     minAzimuthAngle: -1.35,
@@ -170,8 +172,8 @@ const cameraProfiles = {
 };
 
 const closetCamBase = {
-  positionX: cameraProfiles.brown.position.x,
-  targetX: cameraProfiles.brown.target.x
+  positionX: 0.42,
+  targetX: -1.14
 };
 
 const closetCamDebug = {
@@ -753,6 +755,13 @@ function updateOyachi(delta) {
     : 0;
   oyachi.sprite.position.y = oyachi.baseHeight + walkPulse;
 
+  if (oyachi.shadow && oyachi.shadowMaterial) {
+    const stretch = walkPulse * 3.2;
+    oyachi.shadow.position.set(oyachi.sprite.position.x, 0.014, oyachi.sprite.position.z + 0.02);
+    oyachi.shadow.scale.set(1 + stretch, 0.82 + stretch * 0.75, 1);
+    oyachi.shadowMaterial.uniforms.uAlpha.value = 0.31 - walkPulse * 1.9;
+  }
+
   oyachi.squash += (0 - oyachi.squash) * 0.08;
   oyachi.stretch += (0 - oyachi.stretch) * 0.065;
 
@@ -783,14 +792,53 @@ async function loadOyachi() {
 
   const aspect = idle.image.height / idle.image.width;
   const material = new THREE.SpriteMaterial({ map: idle, transparent: true });
+  material.depthWrite = false;
+  material.alphaTest = 0.05;
   const sprite = new THREE.Sprite(material);
   sprite.center.set(0.5, 0);
   sprite.position.set(0, oyachi.baseHeight, 0.8);
   sprite.scale.set(1.05, 1.05 * aspect, 1);
   sprite.userData.type = "oyachi";
+
+  const shadowMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uAlpha: { value: 0.31 }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec2 vUv;
+      uniform float uAlpha;
+      void main() {
+        float d = distance(vUv, vec2(0.5, 0.5));
+        float fill = 1.0 - step(0.47, d);
+        vec3 ink = vec3(0.22, 0.17, 0.2);
+        gl_FragColor = vec4(ink, fill * uAlpha);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.6, 48), shadowMaterial);
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.set(sprite.position.x, 0.014, sprite.position.z + 0.02);
+  shadow.scale.set(1, 0.82, 1);
+  shadow.renderOrder = 1;
+  sprite.renderOrder = 2;
+
+  scene.add(shadow);
   scene.add(sprite);
 
   oyachi.sprite = sprite;
+  oyachi.shadow = shadow;
+  oyachi.shadowMaterial = shadowMaterial;
   oyachi.textures = { idle, pet, aspect };
   oyachi.phase = "idle";
   oyachi.nextActionAt = performance.now() + 900;
