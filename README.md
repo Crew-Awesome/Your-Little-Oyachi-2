@@ -68,7 +68,8 @@ Requested formats that Electrobun does not currently generate directly:
    - macOS: open the generated `.app` (or mount/open `.dmg` and run the app inside).
    - Linux: run the generated `.AppImage` (`chmod +x file.AppImage && ./file.AppImage`).
 4. Important Linux note: do not run `bin/launcher` directly from extracted internals; use the top-level app entry or AppImage.
-5. If the app does not start on Linux, install runtime dependencies first:
+5. Linux graphics fallback: the AppImage enables software GL by default to avoid `GLXBadWindow` on some drivers. To try hardware acceleration, run with `OYACHI_FORCE_SOFTWARE_GL=0 ./YourLittleOyachi2-stable.AppImage`.
+6. If the app does not start on Linux, install runtime dependencies first:
 
 ```bash
 sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev

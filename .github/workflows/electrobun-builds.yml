@@ -98,6 +98,16 @@ jobs:
           set -euo pipefail
           HERE="$(cd "$(dirname "$0")" && pwd)"
           APP_ROOT="${HERE}/usr/opt/YourLittleOyachi2"
+
+          # Linux GPU/GL driver fallback for systems that crash with GLXBadWindow.
+          # Set OYACHI_FORCE_SOFTWARE_GL=0 to disable this fallback.
+          : "${OYACHI_FORCE_SOFTWARE_GL:=1}"
+          if [ "${OYACHI_FORCE_SOFTWARE_GL}" = "1" ]; then
+            export LIBGL_ALWAYS_SOFTWARE=1
+            export WEBKIT_DISABLE_COMPOSITING_MODE=1
+            export WEBKIT_DISABLE_DMABUF_RENDERER=1
+          fi
+
           if [ -x "${APP_ROOT}/bin/launcher" ]; then
             exec "${APP_ROOT}/bin/launcher" "$@"
           fi
