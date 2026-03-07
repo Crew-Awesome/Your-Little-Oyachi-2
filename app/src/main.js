@@ -116,9 +116,10 @@ const roomNames = {
   garden: "Garden"
 };
 
-const pinkBlockers = [
-  { x: 2.405, z: -1.613, radius: 1.02 },
-  { x: 3.293, z: 2.552, radius: 0.95 }
+const oyachiCollisionRadius = 0.52;
+const pinkFurnitureObstacles = [
+  { x: 2.405, z: -1.613, radius: 1.1 },
+  { x: 3.293, z: 2.552, radius: 1.03 }
 ];
 
 const bedZone = {
@@ -144,6 +145,9 @@ const oyachi = {
   scaleY: 1,
   targetX: 0,
   targetZ: 0,
+  pendingTargetX: 0,
+  pendingTargetZ: 0,
+  hasPendingTarget: false,
   holdUntil: 0,
   nextActionAt: 0,
   nextStepAt: 0,
@@ -786,6 +790,9 @@ function placeOyachiForRoom(roomKey, now = performance.now()) {
   oyachi.sprite.material.color.setHex(0xffffff);
   oyachi.targetX = x;
   oyachi.targetZ = z;
+  oyachi.pendingTargetX = x;
+  oyachi.pendingTargetZ = z;
+  oyachi.hasPendingTarget = false;
   oyachi.phase = "idle";
   oyachi.bedLift = 0;
   oyachi.nextActionAt = now + nextActionDelay;
@@ -872,16 +879,25 @@ function isPointOnBed(x, z) {
   return Math.abs(localX) <= bedZone.halfX && Math.abs(localZ) <= bedZone.halfZ;
 }
 
-function pushOutsidePinkBlockers(x, z, radius = 0.34) {
+function isInsidePinkFurniture(x, z, radius = oyachiCollisionRadius) {
+  for (const obstacle of pinkFurnitureObstacles) {
+    if (Math.hypot(x - obstacle.x, z - obstacle.z) < obstacle.radius + radius) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function pushOutsidePinkFurniture(x, z, radius = oyachiCollisionRadius) {
   let nextX = x;
   let nextZ = z;
 
-  for (let i = 0; i < 2; i += 1) {
-    for (const blocker of pinkBlockers) {
-      let dx = nextX - blocker.x;
-      let dz = nextZ - blocker.z;
+  for (let i = 0; i < 3; i += 1) {
+    for (const obstacle of pinkFurnitureObstacles) {
+      let dx = nextX - obstacle.x;
+      let dz = nextZ - obstacle.z;
       let dist = Math.hypot(dx, dz);
-      const minDist = blocker.radius + radius;
+      const minDist = obstacle.radius + radius;
       if (dist >= minDist) continue;
 
       if (dist < 0.0001) {
@@ -899,14 +915,152 @@ function pushOutsidePinkBlockers(x, z, radius = 0.34) {
   return { x: nextX, z: nextZ };
 }
 
+function findPinkSafePoint(x, z, radius = oyachiCollisionRadius) {
+  const bounded = clampPointToRoomBounds(x, z);
+  const pushed = pushOutsidePinkFurniture(bounded.x, bounded.z, radius);
+  return clampPointToRoomBounds(pushed.x, pushed.z);
+}
+
+function randomPinkTarget() {
+  const bounds = getRoomBounds("pink");
+  let fallback = null;
+
+  for (let i = 0; i < 10; i += 1) {
+    const candidateX = THREE.MathUtils.randFloat(
+      -bounds.halfWidth + bounds.marginX,
+      bounds.halfWidth - bounds.marginX
+    );
+    const candidateZ = THREE.MathUtils.randFloat(
+      -bounds.halfDepth + bounds.marginZ,
+      bounds.halfDepth - bounds.marginZ
+    );
+    const safe = findPinkSafePoint(candidateX, candidateZ);
+    fallback = safe;
+
+    if (!isInsidePinkFurniture(safe.x, safe.z, oyachiCollisionRadius * 0.8)) {
+      return safe;
+    }
+  }
+
+  return fallback ?? { x: 0, z: 0 };
+}
+
+function getSegmentProjectionT(ax, az, bx, bz, px, pz) {
+  const abX = bx - ax;
+  const abZ = bz - az;
+  const abLenSq = abX * abX + abZ * abZ;
+  if (abLenSq < 0.000001) return 0;
+  const t = ((px - ax) * abX + (pz - az) * abZ) / abLenSq;
+  return THREE.MathUtils.clamp(t, 0, 1);
+}
+
+function segmentIntersectsCircle(ax, az, bx, bz, cx, cz, radius) {
+  const t = getSegmentProjectionT(ax, az, bx, bz, cx, cz);
+  const closestX = THREE.MathUtils.lerp(ax, bx, t);
+  const closestZ = THREE.MathUtils.lerp(az, bz, t);
+  return {
+    intersects: Math.hypot(closestX - cx, closestZ - cz) < radius,
+    t
+  };
+}
+
+function getFirstBlockingPinkObstacle(fromX, fromZ, toX, toZ, padding = 0.08) {
+  const hitRadius = oyachiCollisionRadius + padding;
+  let best = null;
+
+  for (const obstacle of pinkFurnitureObstacles) {
+    const hit = segmentIntersectsCircle(
+      fromX,
+      fromZ,
+      toX,
+      toZ,
+      obstacle.x,
+      obstacle.z,
+      obstacle.radius + hitRadius
+    );
+
+    if (!hit.intersects) continue;
+    if (!best || hit.t < best.t) {
+      best = { obstacle, t: hit.t };
+    }
+  }
+
+  return best?.obstacle ?? null;
+}
+
+function planPinkPath(fromX, fromZ, targetX, targetZ) {
+  const final = findPinkSafePoint(targetX, targetZ);
+  const blocker = getFirstBlockingPinkObstacle(fromX, fromZ, final.x, final.z);
+  if (!blocker) {
+    return {
+      targetX: final.x,
+      targetZ: final.z,
+      pendingTargetX: final.x,
+      pendingTargetZ: final.z,
+      hasPendingTarget: false
+    };
+  }
+
+  const dirX = final.x - fromX;
+  const dirZ = final.z - fromZ;
+  const dirLen = Math.hypot(dirX, dirZ);
+  if (dirLen < 0.0001) {
+    return {
+      targetX: final.x,
+      targetZ: final.z,
+      pendingTargetX: final.x,
+      pendingTargetZ: final.z,
+      hasPendingTarget: false
+    };
+  }
+
+  const unitX = dirX / dirLen;
+  const unitZ = dirZ / dirLen;
+  const perpX = -unitZ;
+  const perpZ = unitX;
+  const offset = blocker.radius + oyachiCollisionRadius + 0.42;
+
+  const candidateA = findPinkSafePoint(
+    blocker.x + perpX * offset,
+    blocker.z + perpZ * offset
+  );
+  const candidateB = findPinkSafePoint(
+    blocker.x - perpX * offset,
+    blocker.z - perpZ * offset
+  );
+
+  const scoreCandidate = (candidate) => {
+    const legA = Math.hypot(candidate.x - fromX, candidate.z - fromZ);
+    const legB = Math.hypot(final.x - candidate.x, final.z - candidate.z);
+    const blockedA = getFirstBlockingPinkObstacle(fromX, fromZ, candidate.x, candidate.z, 0.04);
+    const blockedB = getFirstBlockingPinkObstacle(candidate.x, candidate.z, final.x, final.z, 0.04);
+    let penalty = 0;
+    if (blockedA) penalty += 8;
+    if (blockedB) penalty += 8;
+    return legA + legB + penalty;
+  };
+
+  const scoreA = scoreCandidate(candidateA);
+  const scoreB = scoreCandidate(candidateB);
+  const detour = scoreA <= scoreB ? candidateA : candidateB;
+
+  return {
+    targetX: detour.x,
+    targetZ: detour.z,
+    pendingTargetX: final.x,
+    pendingTargetZ: final.z,
+    hasPendingTarget: true
+  };
+}
+
 function resolvePinkMovement(currentX, currentZ, intendedX, intendedZ) {
-  const direct = pushOutsidePinkBlockers(intendedX, intendedZ);
+  const direct = pushOutsidePinkFurniture(intendedX, intendedZ);
   if (Math.abs(direct.x - intendedX) < 0.001 && Math.abs(direct.z - intendedZ) < 0.001) {
     return direct;
   }
 
-  const slideX = pushOutsidePinkBlockers(intendedX, currentZ);
-  const slideZ = pushOutsidePinkBlockers(currentX, intendedZ);
+  const slideX = pushOutsidePinkFurniture(intendedX, currentZ);
+  const slideZ = pushOutsidePinkFurniture(currentX, intendedZ);
   const xMoved = Math.hypot(slideX.x - currentX, slideX.z - currentZ);
   const zMoved = Math.hypot(slideZ.x - currentX, slideZ.z - currentZ);
 
@@ -963,6 +1117,12 @@ function startOyachiHop(targetX, targetZ, moveDistance) {
   nextX = bounded.x;
   nextZ = bounded.z;
 
+  if (activeRoomKey === "pink") {
+    const safe = findPinkSafePoint(nextX, nextZ);
+    nextX = safe.x;
+    nextZ = safe.z;
+  }
+
   oyachi.hopFrom.set(oyachi.sprite.position.x, oyachi.sprite.position.z);
   oyachi.hopTo.set(nextX, nextZ);
   oyachi.hopState = "prepare";
@@ -997,10 +1157,17 @@ function chooseOyachiTarget(now = performance.now()) {
   if (activeRoomKey === "brown") {
     oyachi.targetX = THREE.MathUtils.randFloat(-0.55, 0.55);
     oyachi.targetZ = THREE.MathUtils.randFloat(0.05, 0.85);
+    oyachi.hasPendingTarget = false;
+  } else if (activeRoomKey === "pink") {
+    const target = randomPinkTarget();
+    oyachi.targetX = target.x;
+    oyachi.targetZ = target.z;
+    oyachi.hasPendingTarget = false;
   } else {
     const bounds = getRoomBounds(activeRoomKey);
     oyachi.targetX = THREE.MathUtils.randFloat(-bounds.halfWidth + bounds.marginX, bounds.halfWidth - bounds.marginX);
     oyachi.targetZ = THREE.MathUtils.randFloat(-bounds.halfDepth + bounds.marginZ, bounds.halfDepth - bounds.marginZ);
+    oyachi.hasPendingTarget = false;
   }
   oyachi.phase = "moving";
   oyachi.nextActionAt = now + 1800 + Math.random() * 2200;
@@ -1009,9 +1176,19 @@ function chooseOyachiTarget(now = performance.now()) {
 function commandOyachiTo(x, z, now = performance.now()) {
   if (!oyachi.sprite || activeRoomKey === "brown") return;
   randomizeOyachiMoveStyle();
-  const bounds = getRoomBounds(activeRoomKey);
-  oyachi.targetX = THREE.MathUtils.clamp(x, -bounds.halfWidth + bounds.marginX, bounds.halfWidth - bounds.marginX);
-  oyachi.targetZ = THREE.MathUtils.clamp(z, -bounds.halfDepth + bounds.marginZ, bounds.halfDepth - bounds.marginZ);
+  if (activeRoomKey === "pink") {
+    const plan = planPinkPath(oyachi.sprite.position.x, oyachi.sprite.position.z, x, z);
+    oyachi.targetX = plan.targetX;
+    oyachi.targetZ = plan.targetZ;
+    oyachi.pendingTargetX = plan.pendingTargetX;
+    oyachi.pendingTargetZ = plan.pendingTargetZ;
+    oyachi.hasPendingTarget = plan.hasPendingTarget;
+  } else {
+    const bounds = getRoomBounds(activeRoomKey);
+    oyachi.targetX = THREE.MathUtils.clamp(x, -bounds.halfWidth + bounds.marginX, bounds.halfWidth - bounds.marginX);
+    oyachi.targetZ = THREE.MathUtils.clamp(z, -bounds.halfDepth + bounds.marginZ, bounds.halfDepth - bounds.marginZ);
+    oyachi.hasPendingTarget = false;
+  }
   oyachi.phase = "moving";
   oyachi.nextActionAt = now + 1600;
 }
@@ -1207,12 +1384,28 @@ function updateOyachi(delta) {
   const hopping = oyachi.hopState !== "idle";
 
   if (!wantsMove && !hopping && oyachi.phase === "moving") {
-    oyachi.phase = "idle";
-    oyachi.nextActionAt = now + 900 + Math.random() * 2100;
+    if (activeRoomKey === "pink" && oyachi.hasPendingTarget) {
+      oyachi.targetX = oyachi.pendingTargetX;
+      oyachi.targetZ = oyachi.pendingTargetZ;
+      oyachi.hasPendingTarget = false;
+    } else {
+      oyachi.phase = "idle";
+      oyachi.nextActionAt = now + 900 + Math.random() * 2100;
+    }
   }
 
   if (wantsMove && !hopping) {
-    startOyachiHop(oyachi.targetX, oyachi.targetZ, distance);
+    const didStartHop = startOyachiHop(oyachi.targetX, oyachi.targetZ, distance);
+    if (!didStartHop) {
+      if (activeRoomKey === "pink" && oyachi.hasPendingTarget) {
+        oyachi.targetX = oyachi.pendingTargetX;
+        oyachi.targetZ = oyachi.pendingTargetZ;
+        oyachi.hasPendingTarget = false;
+      } else {
+        oyachi.phase = "idle";
+        oyachi.nextActionAt = now + 600 + Math.random() * 900;
+      }
+    }
   }
 
   if (oyachi.hopState !== "idle") {
