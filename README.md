@@ -66,8 +66,9 @@ Requested formats that Electrobun does not currently generate directly:
 3. Run the platform output:
    - Windows: launch the generated `.exe` in the Windows build folder.
    - macOS: open the generated `.app` (or mount/open `.dmg` and run the app inside).
-   - Linux: extract/run from the generated linux bundle folder or tar.gz installer package.
-4. If the app does not start on Linux, install runtime dependencies first:
+   - Linux: run the generated `.AppImage` (`chmod +x file.AppImage && ./file.AppImage`).
+4. Important Linux note: do not run `bin/launcher` directly from extracted internals; use the top-level app entry or AppImage.
+5. If the app does not start on Linux, install runtime dependencies first:
 
 ```bash
 sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev
