@@ -68,26 +68,36 @@ jobs:
           set -euo pipefail
           APPDIR="${RUNNER_TEMP}/AppDir"
           LINUX_ROOT="build/${BUILD_ENV}-linux-x64"
-          GAME_ROOT="${LINUX_ROOT}/YourLittleOyachi2"
+          SETUP_ARCHIVE="artifacts/${BUILD_ENV}-linux-x64-YourLittleOyachi2-Setup.tar.gz"
+          INSTALL_TMP="${RUNNER_TEMP}/electrobun-installer"
+          INSTALL_ROOT="${HOME}/.local/share/com.immalloy.yourlittleoyachi2/${BUILD_ENV}/app"
           OUT_APPIMAGE="${LINUX_ROOT}/YourLittleOyachi2-${BUILD_ENV}.AppImage"
 
-          if [ ! -d "${GAME_ROOT}" ]; then
-            echo "Expected linux build folder not found: ${GAME_ROOT}"
+          if [ ! -f "${SETUP_ARCHIVE}" ]; then
+            echo "Expected linux setup archive not found: ${SETUP_ARCHIVE}"
+            exit 1
+          fi
+
+          rm -rf "${INSTALL_TMP}"
+          mkdir -p "${INSTALL_TMP}"
+          tar -xzf "${SETUP_ARCHIVE}" -C "${INSTALL_TMP}"
+          chmod +x "${INSTALL_TMP}/installer"
+          "${INSTALL_TMP}/installer"
+
+          if [ ! -d "${INSTALL_ROOT}" ]; then
+            echo "Expected extracted app not found: ${INSTALL_ROOT}"
             exit 1
           fi
 
           rm -rf "${APPDIR}"
           mkdir -p "${APPDIR}/usr/opt" "${APPDIR}/usr/share/icons/hicolor/256x256/apps"
-          cp -a "${GAME_ROOT}" "${APPDIR}/usr/opt/YourLittleOyachi2"
+          cp -a "${INSTALL_ROOT}" "${APPDIR}/usr/opt/YourLittleOyachi2"
 
           cat > "${APPDIR}/AppRun" <<'EOF'
           #!/usr/bin/env bash
           set -euo pipefail
           HERE="$(cd "$(dirname "$0")" && pwd)"
           APP_ROOT="${HERE}/usr/opt/YourLittleOyachi2"
-          if [ -x "${APP_ROOT}/YourLittleOyachi2" ]; then
-            exec "${APP_ROOT}/YourLittleOyachi2" "$@"
-          fi
           if [ -x "${APP_ROOT}/bin/launcher" ]; then
             exec "${APP_ROOT}/bin/launcher" "$@"
           fi
