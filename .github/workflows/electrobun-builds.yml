@@ -1,0 +1,57 @@
+name: Electrobun Desktop Builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_env:
+        description: Build channel
+        required: true
+        default: stable
+        type: choice
+        options:
+          - dev
+          - canary
+          - stable
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    env:
+      BUILD_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.build_env || 'stable' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        shell: bash
+        run: bun install
+
+      - name: Build desktop bundle
+        shell: bash
+        run: bun run build -- --env=${BUILD_ENV}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrobun-${{ matrix.os }}-${{ env.BUILD_ENV }}
+          path: build/**
+          if-no-files-found: error

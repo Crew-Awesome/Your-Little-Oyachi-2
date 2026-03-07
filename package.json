@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "electrobun dev",
-    "build": "electrobun build"
+    "build": "electrobun build",
+    "build:dev": "electrobun build --env=dev",
+    "build:canary": "electrobun build --env=canary",
+    "build:stable": "electrobun build --env=stable"
   },
   "dependencies": {
     "three": "^0.161.0"
