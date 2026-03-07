@@ -41,17 +41,103 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
+      - name: Install dependencies (Linux/macOS)
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: bun install
 
-      - name: Build desktop bundle
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: bun install
+
+      - name: Build desktop bundle (Linux/macOS)
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: bun run build -- --env=${BUILD_ENV}
 
-      - name: Upload build artifacts
+      - name: Build desktop bundle (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: bun run build -- --env=$env:BUILD_ENV
+
+      - name: Build Linux AppImage
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPDIR="${RUNNER_TEMP}/AppDir"
+          LINUX_ROOT="build/${BUILD_ENV}-linux-x64"
+          GAME_ROOT="${LINUX_ROOT}/YourLittleOyachi2"
+          OUT_APPIMAGE="${LINUX_ROOT}/YourLittleOyachi2-${BUILD_ENV}.AppImage"
+
+          if [ ! -d "${GAME_ROOT}" ]; then
+            echo "Expected linux build folder not found: ${GAME_ROOT}"
+            exit 1
+          fi
+
+          rm -rf "${APPDIR}"
+          mkdir -p "${APPDIR}/usr/opt" "${APPDIR}/usr/share/icons/hicolor/256x256/apps"
+          cp -a "${GAME_ROOT}" "${APPDIR}/usr/opt/YourLittleOyachi2"
+
+          cat > "${APPDIR}/AppRun" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          HERE="$(cd "$(dirname "$0")" && pwd)"
+          APP_ROOT="${HERE}/usr/opt/YourLittleOyachi2"
+          if [ -x "${APP_ROOT}/YourLittleOyachi2" ]; then
+            exec "${APP_ROOT}/YourLittleOyachi2" "$@"
+          fi
+          if [ -x "${APP_ROOT}/bin/launcher" ]; then
+            exec "${APP_ROOT}/bin/launcher" "$@"
+          fi
+          echo "Could not find a runnable launcher in AppImage payload."
+          exit 1
+          EOF
+          chmod +x "${APPDIR}/AppRun"
+
+          cp "assets/sprites/oyachi/idle-neutral.png" "${APPDIR}/usr/share/icons/hicolor/256x256/apps/oyachi.png"
+
+          cat > "${APPDIR}/your-little-oyachi-2.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Your Little Oyachi 2
+          Exec=AppRun
+          Icon=oyachi
+          Categories=Game;
+          Terminal=false
+          EOF
+
+          cp "${APPDIR}/your-little-oyachi-2.desktop" "${APPDIR}/YourLittleOyachi2.desktop"
+          cp "${APPDIR}/usr/share/icons/hicolor/256x256/apps/oyachi.png" "${APPDIR}/oyachi.png"
+
+          curl -L -o "${RUNNER_TEMP}/appimagetool.AppImage" \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x "${RUNNER_TEMP}/appimagetool.AppImage"
+
+          ARCH=x86_64 "${RUNNER_TEMP}/appimagetool.AppImage" --appimage-extract-and-run "${APPDIR}" "${OUT_APPIMAGE}"
+          ls -la "${LINUX_ROOT}"
+
+      - name: Upload Windows EXE
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: electrobun-${{ matrix.os }}-${{ env.BUILD_ENV }}
-          path: build/**
+          name: oyachi-windows-exe-${{ env.BUILD_ENV }}
+          path: build/${{ env.BUILD_ENV }}-win-x64/**/*.exe
+          if-no-files-found: error
+
+      - name: Upload macOS APP
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: oyachi-macos-app-${{ env.BUILD_ENV }}
+          path: build/${{ env.BUILD_ENV }}-macos-*/**/*.app
+          if-no-files-found: error
+
+      - name: Upload Linux AppImage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: oyachi-linux-appimage-${{ env.BUILD_ENV }}
+          path: build/${{ env.BUILD_ENV }}-linux-x64/*.AppImage
           if-no-files-found: error
