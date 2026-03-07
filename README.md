@@ -31,8 +31,17 @@ bun run build:stable
 
 From `scripts/`:
 
+- macOS/Linux: `./scripts/build-electrobun.sh`
+- Windows: `scripts\build-electrobun.bat`
+
+Both scripts open an interactive chooser menu (TUI-style) so you can pick:
+- DEV/CANARY/STABLE build
+- Build all channels
+- Open build folder
+- Show format support
+
+Non-interactive mode is still available:
 - macOS/Linux: `./scripts/build-electrobun.sh stable`
-- macOS double-click: `./scripts/build-electrobun.command`
 - Windows: `scripts\build-electrobun.bat stable`
 
 Notes:
