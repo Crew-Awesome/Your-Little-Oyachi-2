@@ -4,16 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
-    "build": "tauri build",
-    "build:debug": "tauri build --debug",
-    "build:release": "tauri build",
-    "tauri": "tauri"
+    "dev": "./scripts/dev-server.sh",
+    "dev:win": "scripts\\dev-server.bat"
   },
   "dependencies": {
     "three": "^0.161.0"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^1.6.3"
   }
 }
