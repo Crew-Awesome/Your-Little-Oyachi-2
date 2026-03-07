@@ -756,6 +756,41 @@ const rooms = {
 
 activeRoom = rooms[activeRoomKey];
 
+function resetOyachiMovementState() {
+  oyachi.hopState = "idle";
+  oyachi.hopTimer = 0;
+  oyachi.hopLift = 0;
+  oyachi.hopLean = 0;
+  oyachi.hopLand = 0;
+  oyachi.velocity.set(0, 0);
+  oyachi.moving = false;
+}
+
+function placeOyachiForRoom(roomKey, now = performance.now()) {
+  let x = 0;
+  let z = 0;
+  let nextActionDelay = 280 + Math.random() * 340;
+
+  if (roomKey === "brown") {
+    x = -0.95;
+    z = 0.35;
+    nextActionDelay = 1200;
+  } else if (roomKey === "garden") {
+    x = 0.88;
+    z = gardenDepth / 2 - 1.25;
+    nextActionDelay = 900;
+  }
+
+  oyachi.sprite.position.x = x;
+  oyachi.sprite.position.z = z;
+  oyachi.sprite.material.color.setHex(0xffffff);
+  oyachi.targetX = x;
+  oyachi.targetZ = z;
+  oyachi.phase = "idle";
+  oyachi.bedLift = 0;
+  oyachi.nextActionAt = now + nextActionDelay;
+}
+
 function setRoom(key, { immediateCamera = false } = {}) {
   activeRoomKey = key;
   activeRoom = rooms[activeRoomKey];
@@ -770,49 +805,11 @@ function setRoom(key, { immediateCamera = false } = {}) {
   tooltip.classList.remove("visible");
 
   if (oyachi.sprite) {
-    if (key === "brown") {
-      oyachi.sprite.position.x = -0.95;
-      oyachi.sprite.position.z = 0.35;
-      oyachi.sprite.material.color.setHex(0xffffff);
-      oyachi.targetX = -0.95;
-      oyachi.targetZ = 0.35;
-      oyachi.phase = "idle";
-      oyachi.velocity.set(0, 0);
-      oyachi.bedLift = 0;
-      oyachi.nextActionAt = performance.now() + 1200;
-    } else if (key === "garden") {
-      oyachi.sprite.position.x = 0.88;
-      oyachi.sprite.position.z = gardenDepth / 2 - 1.25;
-      oyachi.sprite.material.color.setHex(0xffffff);
-      oyachi.targetX = 0.88;
-      oyachi.targetZ = gardenDepth / 2 - 1.25;
-      oyachi.phase = "idle";
-      oyachi.velocity.set(0, 0);
-      oyachi.bedLift = 0;
-      oyachi.nextActionAt = performance.now() + 900;
-    } else {
-      oyachi.sprite.position.x = 0;
-      oyachi.sprite.position.z = 0;
-      oyachi.sprite.material.color.setHex(0xffffff);
-      oyachi.targetX = 0;
-      oyachi.targetZ = 0;
-      oyachi.phase = "idle";
-      oyachi.velocity.set(0, 0);
-      oyachi.bedLift = 0;
-      oyachi.nextActionAt = performance.now() + 280 + Math.random() * 340;
-    }
-
-    oyachi.hopState = "idle";
-    oyachi.hopTimer = 0;
-    oyachi.hopLift = 0;
-    oyachi.hopLean = 0;
-    oyachi.hopLand = 0;
-    oyachi.velocity.set(0, 0);
-    oyachi.moving = false;
+    placeOyachiForRoom(key);
+    resetOyachiMovementState();
   }
 
   updateCostumesMenuVisibility();
-
 }
 
 function transitionToRoom(key) {
@@ -1184,12 +1181,7 @@ function updateOyachi(delta) {
     oyachi.targetZ = 0.35;
     oyachi.sprite.position.x += (oyachi.targetX - oyachi.sprite.position.x) * 0.18;
     oyachi.sprite.position.z += (oyachi.targetZ - oyachi.sprite.position.z) * 0.18;
-    oyachi.velocity.set(0, 0);
-    oyachi.hopState = "idle";
-    oyachi.hopTimer = 0;
-    oyachi.hopLift = 0;
-    oyachi.hopLean = 0;
-    oyachi.hopLand = 0;
+    resetOyachiMovementState();
   }
 
   if (now > oyachi.holdUntil) {
@@ -1401,11 +1393,7 @@ async function loadOyachi() {
   oyachi.nextActionAt = performance.now() + 900;
   oyachi.targetX = sprite.position.x;
   oyachi.targetZ = sprite.position.z;
-  oyachi.hopState = "idle";
-  oyachi.hopTimer = 0;
-  oyachi.hopLift = 0;
-  oyachi.hopLean = 0;
-  oyachi.hopLand = 0;
+  resetOyachiMovementState();
 }
 
 function onPointerMove(event) {
@@ -1511,7 +1499,7 @@ function onResize() {
 window.addEventListener("resize", onResize);
 
 async function boot() {
-  await Promise.all([loadOyachi()]);
+  await loadOyachi();
   applyCameraProfile("pink", true);
   hideLoadingScreen();
 }
