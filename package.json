@@ -1,0 +1,16 @@
+{
+  "name": "your-little-oyachi-2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "electrobun dev",
+    "build": "electrobun build"
+  },
+  "dependencies": {
+    "three": "^0.161.0"
+  },
+  "devDependencies": {
+    "electrobun": "latest"
+  }
+}

@@ -91,13 +91,16 @@ const floorTapState = {
   point: new THREE.Vector3()
 };
 
+const runtimeAssetBase = window.location.protocol === "views:" ? "assets://" : "../../assets/";
+const assetPath = (path) => `${runtimeAssetBase}${path}`;
+
 const walkSfxPaths = [
-  "../../assets/audio/sfx/walk_hop_1.wav",
-  "../../assets/audio/sfx/walk_hop_2.wav"
+  assetPath("audio/sfx/walk_hop_1.wav"),
+  assetPath("audio/sfx/walk_hop_2.wav")
 ];
 const petSfxPaths = [
-  "../../assets/audio/sfx/pet_soft_1.wav",
-  "../../assets/audio/sfx/pet_soft_2.wav"
+  assetPath("audio/sfx/pet_soft_1.wav"),
+  assetPath("audio/sfx/pet_soft_2.wav")
 ];
 
 let activeRoomKey = "pink";
@@ -1353,8 +1356,8 @@ function updateOyachi(delta) {
 
 async function loadOyachi() {
   const loader = new THREE.TextureLoader();
-  const idle = await loader.loadAsync("../../assets/sprites/oyachi/idle-neutral.png");
-  const pet = await loader.loadAsync("../../assets/sprites/oyachi/pet-squish.png");
+  const idle = await loader.loadAsync(assetPath("sprites/oyachi/idle-neutral.png"));
+  const pet = await loader.loadAsync(assetPath("sprites/oyachi/pet-squish.png"));
 
   [idle, pet].forEach((texture) => {
     texture.colorSpace = THREE.SRGBColorSpace;

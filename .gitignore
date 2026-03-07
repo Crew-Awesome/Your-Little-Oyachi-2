@@ -1,2 +1,5 @@
 
 /.megamemory
+/node_modules
+/build
+/artifacts
