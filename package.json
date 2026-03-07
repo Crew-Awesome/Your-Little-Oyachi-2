@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "electrobun dev",
-    "build": "electrobun build",
-    "build:dev": "electrobun build --env=dev",
-    "build:canary": "electrobun build --env=canary",
-    "build:stable": "electrobun build --env=stable"
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:debug": "tauri build --debug",
+    "build:release": "tauri build",
+    "tauri": "tauri"
   },
   "dependencies": {
     "three": "^0.161.0"
   },
   "devDependencies": {
-    "electrobun": "latest"
+    "@tauri-apps/cli": "^1.6.3"
   }
 }

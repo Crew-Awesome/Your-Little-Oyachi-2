@@ -91,8 +91,7 @@ const floorTapState = {
   point: new THREE.Vector3()
 };
 
-const runtimeAssetBase = window.location.protocol === "views:" ? "assets://" : "../../assets/";
-const assetPath = (path) => `${runtimeAssetBase}${path}`;
+const assetPath = (path) => `../assets/${path}`;
 
 const walkSfxPaths = [
   assetPath("audio/sfx/walk_hop_1.wav"),
